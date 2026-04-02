@@ -1,0 +1,41 @@
+🟢 1. GET Method (เน้นการดึงข้อมูล / Search / Filter)
+ส่วนใหญ่ใช้ดึงข้อมูลจาก Database จุดนี้มักจะเจอ A05 (SQLi) และ A01 (Broken Access) ครับ
+
+ระดับการเทส:
+
+SQL Injection: ลองใส่ ' OR 1=1 -- หรือ ' UNION SELECT... ใน Query Parameters (เช่น ?search=...)
+
+IDOR (A01): ลองเปลี่ยน ID ใน URL เช่น /api/banners/5 เป็น /api/banners/6 (เพื่อดูว่าดูของคนอื่นได้ไหม)
+
+Resource Exhaustion (A10): ลองใส่ limit=9999999 หรือ page=-1 ดูว่าระบบล่มไหม
+
+Sensitive Data: เช็ค Response ว่ามีข้อมูลลับหลุดมาไหม (เช่น Password hash หรือเบอร์โทรเจ้าของแบนเนอร์)
+
+🟡 2. POST Method (เน้นการสร้างข้อมูลใหม่ / Create)
+ส่วนใหญ่เป็นการส่ง Body (JSON) เข้าไป จุดนี้มักเจอ A05 (XSS/SQLi) และ A10 (Error Handling) ครับ
+
+ระดับการเทส:
+
+XSS Injection: ส่ง Payload <script>alert(1)</script> หรือ javascript:alert(1) เข้าไปในฟิลด์ที่เป็น String
+
+Data Type Chaos (A10): ส่งข้อมูลผิดประเภท เช่น ฟิลด์ที่รับตัวเลขแต่ส่ง "abc" หรือส่ง null ไป
+
+Mass Assignment: ลองแอบเติมฟิลด์ที่หน้าบ้านไม่มีให้กรอก เช่น "isAdmin": true หรือ "status": "approved" เข้าไปใน JSON
+
+Malformed JSON (A10): ลบเครื่องหมายปีกกา { หรือลบลูกน้ำ , ออก แล้วดูว่า Server พ่น Stack Trace ไหม
+
+🟠 3. PUT / PATCH Method (เน้นการแก้ไขข้อมูล / Update)
+จุดนี้ "อันตรายที่สุด" ในแง่ของความเสียหายครับ เพราะมันเปลี่ยนข้อมูลในระบบได้เลย
+
+ระดับการเทส:
+
+IDOR (A01 - Critical): อันนี้ต้องเทสเลย! ล็อกอินด้วย User A แต่พยายามส่ง PUT ไปที่ ID ของ User B ถ้าแก้ไขสำเร็จคือเรื่องใหญ่ครับ
+
+Partial Update (A10): ลองส่ง Body แค่บางฟิลด์ (เช่น ส่งแค่ชื่อ ไม่ส่งรูป) ดูว่าระบบพังหรือฟ้อง Error สวยๆ ไหม
+
+Stored XSS: เหมือน POST เลยครับ ลองแก้ชื่อแบนเนอร์ให้เป็นสคริปต์ แล้วดูว่ามันไปรันที่หน้าบ้านคนอื่นไหม
+
+Logic Bypass: เช่น แก้ไขราคาสินค้าจาก 100 เป็น -100 (ถ้าได้คือระบบคำนวณเงินพังแน่นอน)
+
+3	Global (ช่อง Input ส่วนใหญ่)	A05: Injection	HTML Injection / Potential XSS	ช่อง Input ส่วนใหญ่ในระบบอนุญาตให้บันทึกข้อมูลที่มี HTML Tags และ Event Attributes (เช่น <h1 onmouseover=...) ลงฐานข้อมูลได้โดยตรง	แม้หน้าบ้าน (Frontend) ปัจจุบันจะมีการกรองข้อมูล แต่หากมีการนำ API ไปใช้กับ Client อื่นที่ไม่มีตัวกรอง อาจเกิดช่องโหว่ XSS ได้ทันที	ควรทำ Data Sanitization หรือ Output Encoding จากฝั่ง Server-side ก่อนบันทึกลงฐานข้อมูล หรือก่อนส่งข้อมูลกลับเสมอ
+
